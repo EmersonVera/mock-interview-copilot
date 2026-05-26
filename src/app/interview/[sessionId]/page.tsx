@@ -25,6 +25,7 @@ export default async function InterviewPage({ params }: Props) {
       candidateName: sessionData.candidateName,
       technicalRole: sessionData.technicalRole,
       experienceLevel: sessionData.experienceLevel,
+      language: (sessionData.language || 'es') as 'es' | 'en',
       status: sessionData.status,
     };
 

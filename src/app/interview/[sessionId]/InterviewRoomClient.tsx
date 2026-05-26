@@ -13,7 +13,8 @@ import {
   Cloud,
   Loader2,
   Award,
-  Volume2
+  Volume2,
+  Mic
 } from 'lucide-react';
 
 interface Message {
@@ -28,6 +29,7 @@ interface Session {
   candidateName: string;
   technicalRole: string;
   experienceLevel: string;
+  language: 'es' | 'en';
   status: string;
 }
 
@@ -41,7 +43,16 @@ export default function InterviewRoomClient({ session, initialMessages }: Interv
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    console.log('Session loaded:', { id: session.id, language: session.language, technicalRole: session.technicalRole });
+  }, [session]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,6 +61,51 @@ export default function InterviewRoomClient({ session, initialMessages }: Interv
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const speakText = (text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const lang = (session?.language === 'en') ? 'en-US' : 'es-ES';
+    utterance.lang = lang;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const startVoiceRecognition = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta reconocimiento de voz nativo. Prueba con Google Chrome o Safari.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.lang = session.language === 'en' ? 'en-US' : 'es-ES';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      if (event.error === 'not-allowed') {
+        alert('Permiso de micrófono denegado. Por favor permite el acceso al micrófono en tu navegador. Nota: En entornos locales (HTTP), el micrófono puede estar bloqueado por seguridad.');
+      } else if (event.error === 'no-speech') {
+        // No es un error crítico, simplemente no se detectó voz
+      } else {
+        alert(`Error de reconocimiento de voz: ${event.error}. Asegúrate de tener un micrófono conectado y permiso otorgado.`);
+      }
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInputText((prev) => prev + " " + transcript);
+    };
+
+    recognition.start();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +149,9 @@ export default function InterviewRoomClient({ session, initialMessages }: Interv
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, aiMsg]);
+
+      // 3.5. Sintetizar voz de la respuesta del entrevistador
+      speakText(data.text);
 
     } catch (err: any) {
       console.error(err);
@@ -232,6 +291,9 @@ export default function InterviewRoomClient({ session, initialMessages }: Interv
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] bg-gray-900 border border-gray-800 text-gray-400 font-mono px-2 py-1 rounded">
+              {session.language === 'en' ? '🇺🇸 English' : '🇪🇸 Español'}
+            </span>
+            <span className="text-[10px] bg-gray-900 border border-gray-800 text-gray-400 font-mono px-2 py-1 rounded">
               GCP API: Vertex AI
             </span>
           </div>
@@ -300,6 +362,19 @@ export default function InterviewRoomClient({ session, initialMessages }: Interv
               placeholder={sending ? 'Espera a que el entrevistador responda...' : 'Escribe tu respuesta técnica aquí...'}
               className="flex-1 bg-transparent px-3 py-3 text-sm text-white placeholder-gray-500 focus:outline-none disabled:cursor-not-allowed"
             />
+            <button
+              type="button"
+              onClick={startVoiceRecognition}
+              disabled={sending}
+              className={`p-2.5 rounded-lg transition-all shrink-0 cursor-pointer disabled:cursor-not-allowed mr-1 ${
+                isListening 
+                  ? 'bg-red-500 animate-pulse' 
+                  : 'bg-gray-800 hover:bg-gray-700'
+              }`}
+              title="Responder con voz"
+            >
+              <Mic className={`w-4.5 h-4.5 ${isListening ? 'text-white' : 'text-gray-400'}`} />
+            </button>
             <button
               type="submit"
               disabled={sending || !inputText.trim()}

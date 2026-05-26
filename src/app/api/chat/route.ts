@@ -57,14 +57,27 @@ export async function POST(req: Request) {
       }
     });
 
-
-    // 6. Enviar el nuevo mensaje a Vertex AI
+    // 6. Enviar el nuevo mensaje a Vertex AI con recordatorio de idioma
+    const langName = sessionData.language === 'en' ? 'English' : 'Español';
     const result = await chat.sendMessage({
-      message: messageText,
+      message: `CRITICAL: Respond ONLY in ${langName}. ${sessionData.language === 'en' ? 'Remember to respond in English (en-US).' : 'Recuerda responder únicamente en Español (es-ES).'} ${messageText}`,
     });
     
-    const aiResponseText = result.text || 
-      'Disculpa, he tenido una desconexión momentánea con el servidor de IA. ¿Podrías replantear tu última respuesta?';
+    // Extract text - handle different response formats from the GenAI SDK
+    let aiResponseText = result.text || '';
+    
+    // Fallback extractions if text is empty
+    if (!aiResponseText) {
+      if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+        aiResponseText = result.candidates[0].content.parts[0].text;
+      }
+    }
+    
+    if (!aiResponseText || aiResponseText.trim() === '') {
+      aiResponseText = sessionData.language === 'en'
+        ? 'Sorry, I had a brief disconnection with the AI server. Could you rephrase your last response?'
+        : 'Disculpa, he tenido una desconexión momentánea con el servidor de IA. ¿Podrías replantear tu última respuesta?';
+    }
 
     const now = new Date();
 

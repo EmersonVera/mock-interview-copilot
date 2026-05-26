@@ -12,7 +12,8 @@ import {
   Cloud,
   Terminal,
   Activity,
-  Layers
+  Layers,
+  Globe
 } from 'lucide-react';
 
 const TECHNICAL_ROLES = [
@@ -32,6 +33,7 @@ const EXPERIENCE_LEVELS = [
 export default function Home() {
   const router = useRouter();
   const [name, setName] = useState('');
+  const [language, setLanguage] = useState<'es' | 'en'>('es');
   const [selectedRole, setSelectedRole] = useState(TECHNICAL_ROLES[0].id);
   const [selectedLevel, setSelectedLevel] = useState('Mid');
   const [loading, setLoading] = useState(false);
@@ -63,16 +65,17 @@ export default function Home() {
       });
     }, 1200);
 
-    try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          candidateName: name,
-          technicalRole: selectedRole,
-          experienceLevel: selectedLevel,
-        }),
-      });
+try {
+       const response = await fetch('/api/sessions', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           candidateName: name,
+           technicalRole: selectedRole,
+           experienceLevel: selectedLevel,
+           language: language,
+         }),
+       });
 
       if (!response.ok) {
         throw new Error('Error al crear la sesión');
@@ -203,6 +206,38 @@ export default function Home() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* SELECTOR DE IDIOMA */}
+          <div>
+            <label className="block text-sm font-semibold tracking-wide text-gray-300 mb-4 uppercase flex items-center gap-2">
+              <Globe className="w-4 h-4 text-indigo-400" />
+              Idioma de la Entrevista
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setLanguage('es')}
+                className={`flex-1 py-3 rounded-xl border transition-all font-medium text-sm ${
+                  language === 'es'
+                    ? 'bg-indigo-500/10 border-indigo-500/50 text-white shadow-[0_0_15px_rgba(99,102,241,0.15)]'
+                    : 'bg-gray-900/40 border-gray-800 text-gray-400 hover:border-gray-700'
+                }`}
+              >
+                🇪🇸 Español
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`flex-1 py-3 rounded-xl border transition-all font-medium text-sm ${
+                  language === 'en'
+                    ? 'bg-indigo-500/10 border-indigo-500/50 text-white shadow-[0_0_15px_rgba(99,102,241,0.15)]'
+                    : 'bg-gray-900/40 border-gray-800 text-gray-400 hover:border-gray-700'
+                }`}
+              >
+                🇺🇸 English
+              </button>
             </div>
           </div>
 
